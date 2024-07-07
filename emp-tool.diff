@@ -1,0 +1,106 @@
+diff --git a/emp-tool/emp-tool.cpp b/emp-tool/emp-tool.cpp
+index b0878a5..d737576 100644
+--- a/emp-tool/emp-tool.cpp
++++ b/emp-tool/emp-tool.cpp
+@@ -1,10 +1,11 @@
+ #include "emp-tool/execution/circuit_execution.h"
+ #include "emp-tool/execution/protocol_execution.h"
+ 
+-#ifndef THREADING
+-emp::ProtocolExecution* emp::ProtocolExecution::prot_exec = nullptr;
+-emp::CircuitExecution* emp::CircuitExecution::circ_exec = nullptr;
+-#else
+-__thread emp::ProtocolExecution* emp::ProtocolExecution::prot_exec = nullptr;
+-__thread emp::CircuitExecution* emp::CircuitExecution::circ_exec = nullptr;
+-#endif
++// #ifndef THREADING
++// emp::ProtocolExecution* emp::ProtocolExecution::prot_exec = nullptr;
++// emp::CircuitExecution* emp::CircuitExecution::circ_exec = nullptr;
++// #else
++thread_local emp::ProtocolExecution* emp::ProtocolExecution::prot_exec =
++    nullptr;
++thread_local emp::CircuitExecution* emp::CircuitExecution::circ_exec = nullptr;
++// #endif
+diff --git a/emp-tool/execution/circuit_execution.h b/emp-tool/execution/circuit_execution.h
+index 7bae48a..542ea03 100644
+--- a/emp-tool/execution/circuit_execution.h
++++ b/emp-tool/execution/circuit_execution.h
+@@ -2,6 +2,9 @@
+ #define EMP_CIRCUIT_EXECUTION_H__
+ #include "emp-tool/utils/block.h"
+ #include "emp-tool/utils/constants.h"
++#ifndef THREADING
++#define THREADING
++#endif
+ 
+ namespace emp {
+ 
+@@ -13,7 +16,7 @@ class CircuitExecution { public:
+ #ifndef THREADING
+ 	static CircuitExecution * circ_exec;
+ #else
+-	static __thread CircuitExecution * circ_exec;
++    static thread_local CircuitExecution* circ_exec;
+ #endif
+ 	virtual block and_gate(const block& in1, const block& in2) = 0;
+ 	virtual block xor_gate(const block&in1, const block&in2) = 0;
+@@ -26,4 +29,4 @@ class CircuitExecution { public:
+ };
+ enum RTCktOpt{on, off};
+ }
+-#endif
+\ No newline at end of file
++#endif
+diff --git a/emp-tool/execution/protocol_execution.h b/emp-tool/execution/protocol_execution.h
+index 62f8647..9752927 100644
+--- a/emp-tool/execution/protocol_execution.h
++++ b/emp-tool/execution/protocol_execution.h
+@@ -3,6 +3,9 @@
+ #include <pthread.h>  
+ #include "emp-tool/utils/block.h"
+ #include "emp-tool/utils/constants.h"
++#ifndef THREADING
++#define THREADING
++#endif
+ 
+ namespace emp {
+ class ProtocolExecution { 
+@@ -11,7 +14,7 @@ public:
+ #ifndef THREADING
+ 	static ProtocolExecution * prot_exec;
+ #else
+-	static __thread ProtocolExecution * prot_exec;
++        static thread_local ProtocolExecution* prot_exec;
+ #endif
+ 
+ 	ProtocolExecution(int party = PUBLIC) : cur_party (party) {}
+diff --git a/emp-tool/io/net_io_channel.h b/emp-tool/io/net_io_channel.h
+index 6566564..c23e428 100644
+--- a/emp-tool/io/net_io_channel.h
++++ b/emp-tool/io/net_io_channel.h
+@@ -124,8 +124,11 @@ class NetIO: public IOChannel<NetIO> { public:
+ 			size_t res = fwrite(sent + (char*)data, 1, len - sent, stream);
+ 			if (res > 0)
+ 				sent+=res;
+-			else
++			else {
++				fprintf(stdout, "emp send_data_internal, want to write %zu, already write %zu, Fail to write due to reason: %s\n", len, sent, strerror(errno));
++				fprintf(stderr, "emp send_data_internal, want to write %zu, already write %zu, Fail to write due to reason: %s\n", len, sent, strerror(errno));
+ 				error("net_send_data\n");
++			}
+ 		}
+ 		has_sent = true;
+ 	}
+@@ -139,8 +142,11 @@ class NetIO: public IOChannel<NetIO> { public:
+ 			size_t res = fread(sent + (char*)data, 1, len - sent, stream);
+ 			if (res > 0)
+ 				sent += res;
+-			else
++			else {
++				fprintf(stdout, "emp recv_data_internal, want to read %zu, already read %zu, Fail to read due to reason: %s\n", len, sent, strerror(errno));
++				fprintf(stderr, "emp recv_data_internal, want to write %zu, already read %zu, Fail to read due to reason: %s\n", len, sent, strerror(errno));
+ 				error("net_recv_data\n");
++			}
+ 		}
+ 	}
+ };
