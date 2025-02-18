@@ -24,7 +24,7 @@ To compile and run the codes, please install the following dependencies:
         make -j
         sudo make install
       ```    
-  + The install the related `emp-tool` dependencies by running
+  + Then install the related `emp-tool` dependencies by running
     ```
         wget https://raw.githubusercontent.com/emp-toolkit/emp-readme/master/scripts/install.py
         python3 install.py --ot --sh2pc
